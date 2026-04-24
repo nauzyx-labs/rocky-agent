@@ -6,7 +6,7 @@
 import SwiftUI
 
 struct ChatView: View {
-    @ObservedObject var session: ClaudeSession
+    @ObservedObject var session: GeminiSession
     @State private var input: String = ""
     @FocusState private var inputFocused: Bool
 
@@ -81,7 +81,7 @@ struct ChatView: View {
 }
 
 struct TerminalLine: View {
-    let line: ClaudeSession.OutputLine
+    let line: GeminiSession.OutputLine
 
     var body: some View {
         Text(line.text)

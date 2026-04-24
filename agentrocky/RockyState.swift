@@ -19,8 +19,8 @@ class RockyState: ObservableObject {
     var screenBounds: CGRect = .zero
     var dockY: CGFloat = 0
 
-    /// Single persistent Claude session — survives popover open/close.
-    lazy var session: ClaudeSession = ClaudeSession(workingDirectory: realHome)
+    /// Single persistent Gemini session — survives popover open/close.
+    lazy var session: GeminiSession = GeminiSession(workingDirectory: realHome)
 
     private var realHome: String {
         getpwuid(getuid()).flatMap { String(cString: $0.pointee.pw_dir, encoding: .utf8) }
