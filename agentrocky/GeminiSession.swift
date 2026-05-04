@@ -17,8 +17,8 @@ class GeminiSession: ObservableObject, Identifiable {
     let workingDirectory: String
 
     private let apiKey: String
-    private let model: String = "gemini-1.5-flash"
-    private let baseURL = "https://generativelanguage.googleapis.com/v1/models"
+    private let model: String = "gemini-flash-lite-latest"
+    private let baseURL = "https://generativelanguage.googleapis.com/v1beta/models"
 
     /// Conversation history for multi-turn
     private var history: [[String: Any]] = []
@@ -95,22 +95,13 @@ class GeminiSession: ObservableObject, Identifiable {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 120
 
-        // In v1, we move the system instruction into the contents history as a first turn if it's not already there.
-        var contents = history
-        let systemPrompt = "IMPORTANT: You are Rocky, a helpful AI assistant. Be concise and clear. Your responses should be formatted for a terminal-like view. Working directory: \(workingDirectory)"
-        
-        // Prepend system prompt to the first turn to simulate system behavior in v1
-        if let firstTurn = contents.first, 
-           var parts = firstTurn["parts"] as? [[String: Any]],
-           var firstPart = parts.first,
-           let userText = firstPart["text"] as? String {
-            firstPart["text"] = "\(systemPrompt)\n\nUser request: \(userText)"
-            parts[0] = firstPart
-            contents[0]["parts"] = parts
-        }
+        let systemInstruction: [String: Any] = [
+            "parts": [["text": "You are Rocky, a helpful AI assistant. Be concise and clear. Your responses should be formatted for a terminal-like view. Working directory: \(workingDirectory)"]]
+        ]
 
         let body: [String: Any] = [
-            "contents": contents,
+            "system_instruction": systemInstruction,
+            "contents": history,
             "generationConfig": [
                 "temperature": 1.0,
                 "maxOutputTokens": 8192
