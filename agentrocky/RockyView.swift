@@ -78,8 +78,8 @@ struct RockyView: View {
                 ChatView(state: state)
                     .frame(width: 480, height: 560)
             }
-            .onChange(of: showChat) { open in
-                state.isChatOpen = open
+            .onChange(of: showChat) {
+                state.isChatOpen = showChat
             }
         }
         .animation(.spring(response: 0.25, dampingFraction: 0.65), value: state.speechBubble)

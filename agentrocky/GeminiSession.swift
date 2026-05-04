@@ -44,12 +44,14 @@ class GeminiSession: ObservableObject, Identifiable {
 
     func send(prompt: String) {
         guard !isRunning else { return }
+        // Show user message as a chat bubble immediately
+        appendMain(prompt, kind: .system)
         DispatchQueue.main.async {
             self.isRunning = true
             self.streamingText = ""
         }
 
-        // Add user turn to history
+        // Add user turn to conversation history
         let userTurn: [String: Any] = [
             "role": "user",
             "parts": [["text": prompt]]
@@ -96,7 +98,7 @@ class GeminiSession: ObservableObject, Identifiable {
         request.timeoutInterval = 120
 
         let systemInstruction: [String: Any] = [
-            "parts": [["text": "You are Rocky, a helpful AI assistant. Be concise and clear. Your responses should be formatted for a terminal-like view. Working directory: \(workingDirectory)"]]
+            "parts": [["text": "You are Rocky, a friendly and helpful AI assistant. Respond naturally in a conversational tone. Be concise, clear, and friendly. Do NOT use terminal prompts or shell-style output. Working directory context: \(workingDirectory)"]]
         ]
 
         let body: [String: Any] = [
@@ -180,8 +182,8 @@ class GeminiSession: ObservableObject, Identifiable {
                     if let error, (error as NSError).code != NSURLErrorCancelled {
                         self.appendMain("⚠ \(error.localizedDescription)", kind: .error)
                     } else if !fullResponse.isEmpty {
-                        // Commit streamed text as a final line
-                        self.lines.append(OutputLine(text: "rocky: \(fullResponse)", kind: .text))
+                        // Commit streamed text as a final AI bubble
+                        self.lines.append(OutputLine(text: fullResponse, kind: .text))
                         // Add to conversation history
                         self.history.append([
                             "role": "model",

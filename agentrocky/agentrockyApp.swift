@@ -38,8 +38,14 @@ struct MenuBarContent: View {
                 NSApp.activate(ignoringOtherApps: true)
             }
 
-            Button("New Session") {
-                appDelegate.rockyState.addSession()
+            Button("New Chat") {
+                appDelegate.rockyState.addChatSession()
+                appDelegate.rockyState.isChatOpen = true
+                NSApp.activate(ignoringOtherApps: true)
+            }
+
+            Button("New Terminal") {
+                appDelegate.rockyState.addTerminalSession()
                 appDelegate.rockyState.isChatOpen = true
                 NSApp.activate(ignoringOtherApps: true)
             }
@@ -267,9 +273,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if alert.runModal() == .alertFirstButtonReturn {
             let key = input.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
             UserDefaults.standard.set(key, forKey: "gemini_api_key")
-            // Rebuild all sessions with the new key
-            let wd = rockyState.sessions.first?.workingDirectory ?? NSHomeDirectory()
-            rockyState.sessions = [GeminiSession(title: "rocky #1", workingDirectory: wd, apiKey: key)]
+            rockyState.sessions.forEach { $0.terminalSession?.close() }
+            rockyState.sessions = []
+            rockyState.addChatSession()
             rockyState.activeSessionIndex = 0
         }
     }
