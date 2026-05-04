@@ -75,8 +75,8 @@ struct RockyView: View {
             }
             .buttonStyle(.plain)
             .popover(isPresented: $showChat, arrowEdge: .top) {
-                ChatView(session: state.session)
-                    .frame(width: 420, height: 520)
+                ChatView(state: state)
+                    .frame(width: 480, height: 560)
             }
             .onChange(of: showChat) { open in
                 state.isChatOpen = open

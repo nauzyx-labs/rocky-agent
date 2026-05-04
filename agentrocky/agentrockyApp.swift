@@ -12,9 +12,61 @@ struct agentrockyApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
+        // Native macOS menu bar
+        MenuBarExtra("rocky", systemImage: "desktopcomputer") {
+            MenuBarContent(appDelegate: appDelegate)
+        }
+
         Settings { EmptyView() }
     }
 }
+
+// MARK: - Menu Bar Content
+
+struct MenuBarContent: View {
+    let appDelegate: AppDelegate
+
+    var body: some View {
+        Group {
+            Text("rocky agent")
+                .font(.headline)
+
+            Divider()
+
+            Button("Open Chat") {
+                appDelegate.rockyState.isChatOpen = true
+                NSApp.activate(ignoringOtherApps: true)
+            }
+
+            Button("New Session") {
+                appDelegate.rockyState.addSession()
+                appDelegate.rockyState.isChatOpen = true
+                NSApp.activate(ignoringOtherApps: true)
+            }
+
+            Divider()
+
+            Button("Restart Session") {
+                appDelegate.rockyState.restartActiveSession()
+            }
+
+            Divider()
+
+            Button("Set API Key…") {
+                appDelegate.showApiKeyAlert()
+            }
+
+            Divider()
+
+            Button("Quit rocky") {
+                NSApplication.shared.terminate(nil)
+            }
+            .keyboardShortcut("q")
+        }
+    }
+}
+
+// MARK: - AppDelegate
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     var rockyWindow: NSPanel?
@@ -119,24 +171,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    // MARK: - Jazz
+    // MARK: - Jazz (triggered by any session completing)
 
     private func setupJazzTriggers() {
-        // Jazz when a Claude task finishes
-        rockyState.session.$isRunning
+        // Observe all sessions via state changes
+        rockyState.$sessions
+            .flatMap { sessions in
+                Publishers.MergeMany(sessions.map { $0.$isRunning })
+            }
             .removeDuplicates()
-            .dropFirst()                    // skip the initial false
-            .filter { !$0 }                 // only when it becomes false (task done)
+            .dropFirst()
+            .filter { !$0 }
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.startJazz(duration: 3.0) }
             .store(in: &cancellables)
 
-        // Random jazz while idle
         scheduleRandomJazz()
     }
 
     private func setupSpeechBubble() {
-        rockyState.session.$isRunning
+        rockyState.$sessions
+            .flatMap { sessions in
+                Publishers.MergeMany(sessions.map { $0.$isRunning })
+            }
             .removeDuplicates()
             .dropFirst()
             .receive(on: DispatchQueue.main)
@@ -188,6 +245,32 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.0, execute: work)
             }
             self.scheduleRandomJazz()
+        }
+    }
+
+    // MARK: - API Key
+
+    func showApiKeyAlert() {
+        let alert = NSAlert()
+        alert.messageText = "Gemini API Key"
+        alert.informativeText = "Enter your Gemini API key. It will be stored in app preferences."
+        alert.alertStyle = .informational
+
+        let input = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 320, height: 24))
+        input.placeholderString = "AIza..."
+        input.stringValue = UserDefaults.standard.string(forKey: "gemini_api_key") ?? ""
+        alert.accessoryView = input
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Cancel")
+
+        NSApp.activate(ignoringOtherApps: true)
+        if alert.runModal() == .alertFirstButtonReturn {
+            let key = input.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+            UserDefaults.standard.set(key, forKey: "gemini_api_key")
+            // Rebuild all sessions with the new key
+            let wd = rockyState.sessions.first?.workingDirectory ?? NSHomeDirectory()
+            rockyState.sessions = [GeminiSession(title: "rocky #1", workingDirectory: wd, apiKey: key)]
+            rockyState.activeSessionIndex = 0
         }
     }
 }
